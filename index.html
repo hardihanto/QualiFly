@@ -1,0 +1,365 @@
+import { useState, useEffect } from "react";
+
+// Types
+interface Question {
+  id: string;
+  text: string;
+  type: "multiple_choice" | "number" | "text";
+  options?: string[];
+  score: number[];
+  required: boolean;
+}
+
+interface Lead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  answers: Record<string, any>;
+  totalScore: number;
+  status: "qualified" | "unqualified" | "pending";
+  createdAt: Date;
+  propertyInterest: string;
+}
+
+interface DashboardStats {
+  totalLeads: number;
+  qualifiedLeads: number;
+  conversionRate: number;
+  avgScore: number;
+}
+
+// Initial questions template
+const initialQuestions: Question[] = [
+  {
+    id: "1",
+    text: "Berapa budget Anda untuk properti?",
+    type: "multiple_choice",
+    options: ["< 500 juta", "500 juta - 1 Milyar", "1 - 2 Milyar", "> 2 Milyar"],
+    score: [10, 25, 50, 100],
+    required: true,
+  },
+  {
+    id: "2",
+    text: "Kapan rencana Anda membeli properti?",
+    type: "multiple_choice",
+    options: ["3 bulan", "6 bulan", "1 tahun", "> 1 tahun"],
+    score: [100, 60, 30, 10],
+    required: true,
+  },
+  {
+    id: "3",
+    text: "Apakah Anda sudah memiliki rumah/tanah?",
+    type: "multiple_choice",
+    options: ["Ya, akan dijual", "Ya, untuk investasi", "Belum", "Sedang cicil"],
+    score: [80, 60, 40, 50],
+    required: true,
+  },
+  {
+    id: "4",
+    text: "Sumber financing Anda?",
+    type: "multiple_choice",
+    options: ["Cash", "KPR", "KPA", "Still exploring"],
+    score: [100, 70, 65, 30],
+    required: true,
+  },
+  {
+    id: "5",
+    text: "Berapa penghasilan bulanan Anda?",
+    type: "multiple_choice",
+    options: ["< 10 juta", "10 - 25 juta", "25 - 50 juta", "> 50 juta"],
+    score: [10, 30, 60, 100],
+    required: true,
+  },
+];
+
+// Chart Component
+const ScoreChart = ({ data }: { data: Lead[] }) => {
+  const maxScore = 500;
+  const qualifiedCount = data.filter((l) => l.status === "qualified").length;
+  const pendingCount = data.filter((l) => l.status === "pending").length;
+  const unqualifiedCount = data.filter((l) => l.status === "unqualified").length;
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">Lead Distribution</h3>
+      <div className="flex items-end justify-around h-40 gap-2">
+        <div className="flex flex-col items-center gap-2">
+          <div
+            className="w-16 bg-green-500 rounded-t-lg transition-all duration-500"
+            style={{ height: `${(qualifiedCount / Math.max(data.length, 1)) * 100}%` }}
+          />
+          <span className="text-sm text-gray-600">{qualifiedCount}</span>
+          <span className="text-xs text-green-600 font-medium">Qualified</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <div
+            className="w-16 bg-yellow-500 rounded-t-lg transition-all duration-500"
+            style={{ height: `${(pendingCount / Math.max(data.length, 1)) * 100}%` }}
+          />
+          <span className="text-sm text-gray-600">{pendingCount}</span>
+          <span className="text-xs text-yellow-600 font-medium">Pending</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <div
+            className="w-16 bg-red-400 rounded-t-lg transition-all duration-500"
+            style={{ height: `${(unqualifiedCount / Math.max(data.length, 1)) * 100}%` }}
+          />
+          <span className="text-sm text-gray-600">{unqualifiedCount}</span>
+          <span className="text-xs text-red-500 font-medium">Unqualified</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Score Bar Component
+const ScoreBar = ({ score, maxScore = 500 }: { score: number; maxScore?: number }) => {
+  const percentage = (score / maxScore) * 100;
+  const getColor = () => {
+    if (percentage >= 70) return "bg-green-500";
+    if (percentage >= 40) return "bg-yellow-500";
+    return "bg-red-400";
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className={`h-full ${getColor()} rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }} />
+      </div>
+      <span className="text-sm font-medium text-gray-700 w-12 text-right">{score}</span>
+    </div>
+  );
+};
+
+// Main App Component
+export default function QualiFlyApp() {
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
+  const [leads, setLeads] = useState<Lead[]>([
+    {
+      id: "1",
+      name: "Budi Santoso",
+      phone: "6281234567890",
+      email: "budi.santoso@email.com",
+      answers: { "1": "1 - 2 Milyar", "2": "3 bulan", "3": "Ya, akan dijual", "4": "KPR", "5": "> 50 juta" },
+      totalScore: 420,
+      status: "qualified",
+      createdAt: new Date(Date.now() - 86400000),
+      propertyInterest: "Cluster Gardenia",
+    },
+    {
+      id: "2",
+      name: "Siti Rahayu",
+      phone: "6289876543210",
+      email: "siti.rahayu@email.com",
+      answers: { "1": "< 500 juta", "2": "> 1 tahun", "3": "Belum", "4": "Still exploring", "5": "< 10 juta" },
+      totalScore: 100,
+      status: "unqualified",
+      createdAt: new Date(Date.now() - 172800000),
+      propertyInterest: "Apartemen Midwest",
+    },
+    {
+      id: "3",
+      name: "Ahmad Wijaya",
+      phone: "6285556667777",
+      email: "ahmad.wijaya@company.com",
+      answers: { "1": "500 juta - 1 Milyar", "2": "6 bulan", "3": "Ya, untuk investasi", "4": "Cash", "5": "25 - 50 juta" },
+      totalScore: 315,
+      status: "qualified",
+      createdAt: new Date(Date.now() - 3600000),
+      propertyInterest: "Rumah Sakit Mewah",
+    },
+    {
+      id: "4",
+      name: "Dewi Lestari",
+      phone: "6282223334444",
+      email: "dewi.lestari@gmail.com",
+      answers: { "1": "1 - 2 Milyar", "2": "1 tahun", "3": "Sedang cicil", "4": "KPA", "5": "10 - 25 juta" },
+      totalScore: 255,
+      status: "pending",
+      createdAt: new Date(Date.now() - 7200000),
+      propertyInterest: "Townhouse Elite",
+    },
+  ]);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadFormData, setLeadFormData] = useState<Record<string, any>>({});
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("6281234567890");
+  const [crmIntegration, setCrmIntegration] = useState({
+    enabled: false,
+    type: "hubspot",
+    apiKey: "",
+  });
+
+  // Calculate dashboard stats
+  const stats: DashboardStats = {
+    totalLeads: leads.length,
+    qualifiedLeads: leads.filter((l) => l.status === "qualified").length,
+    conversionRate: leads.length > 0 ? Math.round((leads.filter((l) => l.status === "qualified").length / leads.length) * 100) : 0,
+    avgScore: leads.length > 0 ? Math.round(leads.reduce((acc, l) => acc + l.totalScore, 0) / leads.length) : 0,
+  };
+
+  // Navigation items
+  const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: "📊" },
+    { id: "questionnaire", label: "Questionnaire", icon: "📝" },
+    { id: "leads", label: "Leads", icon: "👥" },
+    { id: "preview", label: "Landing Preview", icon: "🎨" },
+    { id: "settings", label: "Settings", icon: "⚙️" },
+  ];
+
+  // Calculate score for a lead
+  const calculateScore = (answers: Record<string, any>) => {
+    let total = 0;
+    questions.forEach((q) => {
+      const answer = answers[q.id];
+      if (answer !== undefined && q.options) {
+        const index = q.options.indexOf(answer);
+        if (index !== -1 && q.score[index]) {
+          total += q.score[index];
+        }
+      }
+    });
+    return total;
+  };
+
+  // Get status based on score
+  const getStatus = (score: number) => {
+    if (score >= 300) return "qualified";
+    if (score >= 150) return "pending";
+    return "unqualified";
+  };
+
+  // Handle form submission
+  const handleLeadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const score = calculateScore(leadFormData);
+    const status = getStatus(score);
+    const newLead: Lead = {
+      id: Date.now().toString(),
+      name: leadFormData.name || "Anonymous",
+      phone: leadFormData.phone || "",
+      email: leadFormData.email || "",
+      answers: { ...leadFormData },
+      totalScore: score,
+      status,
+      createdAt: new Date(),
+      propertyInterest: leadFormData.property || "General Inquiry",
+    };
+    setLeads([newLead, ...leads]);
+    setShowLeadForm(false);
+    setLeadFormData({});
+
+    if (status === "qualified") {
+      const waUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        `Halo! Saya ${newLead.name}, baru saja mengisi kuesioner QualiFly. Score saya: ${score}. Saya tertarik dengan properti ${newLead.propertyInterest}.`
+      )}`;
+      window.open(waUrl, "_blank");
+    }
+  };
+
+  // Add/Edit question
+  const handleSaveQuestion = (question: Question) => {
+    if (editingQuestion) {
+      setQuestions(questions.map((q) => (q.id === question.id ? question : q)));
+    } else {
+      setQuestions([...questions, { ...question, id: Date.now().toString() }]);
+    }
+    setShowQuestionModal(false);
+    setEditingQuestion(null);
+  };
+
+  // Delete question
+  const handleDeleteQuestion = (id: string) => {
+    setQuestions(questions.filter((q) => q.id !== id));
+  };
+
+  // Export leads
+  const exportLeads = () => {
+    const csv = [
+      ["Name", "Email", "Phone", "Score", "Status", "Property Interest", "Date"].join(","),
+      ...leads.map((l) => [l.name, l.email, l.phone, l.totalScore, l.status, l.propertyInterest, l.createdAt.toLocaleDateString()].join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads-export.csv";
+    a.click();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <span className="text-white text-xl">🦅</span>
+            </div>
+            <div>
+              <h1 className="font-bold text-gray-800">QualiFly</h1>
+              <p className="text-xs text-gray-500">AI Lead Qualifier</p>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 p-4">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-all ${
+                activeTab === item.id ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
+            <p className="text-sm font-medium mb-2">Need Help?</p>
+            <p className="text-xs opacity-90 mb-3">Check our documentation for setup guides</p>
+            <button className="w-full bg-white text-blue-600 text-sm py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+              View Docs
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">
+          {/* Dashboard Tab */}
+          {activeTab === "dashboard" && (
+            <div>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+                <p className="text-gray-500">Overview of your lead qualification performance</p>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl">👥</span>
+                    <span className="text-green-500 text-sm font-medium">+12%</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats.totalLeads}</h3>
+                  <p className="text-gray-500 text-sm">Total Leads</p>
+                </div>
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl">✅</span>
+                    <span className="text-green-500 text-sm font-medium">+8%</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats.qualifiedLeads}</h3>
+                  <p className="text-gray-500 text-sm">Qualified Leads</p>
+                </div>
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-3xl">📈</span>
+                    <span className="text-green-500 text-sm font-medium">+5%</span>
