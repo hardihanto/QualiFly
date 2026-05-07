@@ -1,12 +1,10 @@
 import { useState, useMemo } from 'react'
 
 /* ==================== TYPES ==================== */
-type QuestionType = 'multiple_choice'
-
 interface Question {
   id: string
   text: string
-  type: QuestionType
+  type: 'multiple_choice'
   options: string[]
   scores: number[]
   required: boolean
@@ -23,7 +21,7 @@ interface Lead {
   totalScore: number
   maxPossible: number
   status: LeadStatus
-  createdAt: number // timestamp
+  createdAt: number
   propertyInterest: string
 }
 
@@ -132,7 +130,6 @@ const INITIAL_LEADS: Lead[] = [
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
 }
@@ -161,42 +158,6 @@ const StatusBadge = ({ status }: { status: LeadStatus }) => {
   }
   const labels: Record<LeadStatus, string> = { qualified: 'Qualified', unqualified: 'Unqualified', pending: 'Pending' }
   return <span className={cx('px-3 py-1 rounded-full text-xs font-medium', styles[status])}>{labels[status]}</span>
-}
-
-const ScoreChart = ({ leads }: { leads: Lead[] }) => {
-  const counts = useMemo(() => {
-    return {
-      qualified: leads.filter((l) => l.status === 'qualified').length,
-      pending: leads.filter((l) => l.status === 'pending').length,
-      unqualified: leads.filter((l) => l.status === 'unqualified').length,
-    }
-  }, [leads])
-  const maxVal = Math.max(counts.qualified + counts.pending + counts.unqualified, 1)
-
-  return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <h3 className="text-lg font-bold text-gray-800 mb-6">Lead Distribution</h3>
-      <div className="flex items-end justify-around h-48 gap-4">
-        {([
-          { key: 'qualified' as const, color: 'bg-green-500', label: 'Qualified' },
-          { key: 'pending' as const, color: 'bg-yellow-400', label: 'Pending' },
-          { key: 'unqualified' as const, color: 'bg-red-400', label: 'Unqualified' },
-        ]).map((item) => {
-          const val = counts[item.key]
-          const height = (val / maxVal) * 100
-          return (
-            <div key={item.key} className="flex flex-col items-center gap-2 flex-1">
-              <span className="text-sm font-bold text-gray-700">{val}</span>
-              <div className="w-full flex justify-center items-end h-32">
-                <div className={cx('w-12 rounded-t-lg transition-all duration-700', item.color)} style={{ height: `${Math.max(height, 5)}%` }} />
-              </div>
-              <span className="text-xs font-medium text-gray-500">{item.label}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
 }
 
 const StatCard = ({ icon, label, value, change }: { icon: string; label: string; value: string; change: string }) => (
@@ -233,7 +194,6 @@ export default function App() {
   const [previewMeta, setPreviewMeta] = useState({ name: '', phone: '', email: '', property: '' })
   const [previewResult, setPreviewResult] = useState<{ score: number; status: LeadStatus; submitted: boolean } | null>(null)
 
-  /* Analytics */
   const stats = useMemo(() => {
     const total = leads.length
     const qualified = leads.filter((l) => l.status === 'qualified').length
@@ -245,7 +205,6 @@ export default function App() {
     }
   }, [leads])
 
-  /* Actions */
   const computeScoreAndStatus = (answers: Record<string, string>) => {
     let total = 0
     let max = 0
@@ -331,7 +290,6 @@ export default function App() {
     }
     setLeads((prev) => [newLead, ...prev])
     setPreviewResult({ score: total, status, submitted: true })
-
     if (status === 'qualified') {
       const msg = `Halo! Saya ${previewMeta.name}, baru saja mengisi kuesioner QualiFly.\n\n✅ Score: ${total}/${max}\n🏠 Properti: ${previewMeta.property || 'General Inquiry'}\n📊 Status: ${status.toUpperCase()}\n\nSaya tertarik untuk diskusi lebih lanjut.`
       const waUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`
@@ -366,7 +324,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
         <nav className="flex-1 p-4 space-y-1">
           {tabs.map((t) => (
             <button
@@ -382,16 +339,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-
-        <div className="p-4">
-          <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-4 text-white">
-            <p className="text-sm font-semibold mb-1">Pro Tip</p>
-            <p className="text-xs opacity-90 mb-3">Pastikan semua pertanyaan wajib diisi agar skor akurat.</p>
-            <button onClick={() => setActiveTab('settings')} className="w-full bg-white text-blue-700 text-xs py-2 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
-              Open Settings
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* MAIN CONTENT */}
@@ -403,34 +350,12 @@ export default function App() {
               <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
               <p className="text-gray-500">Overview performa lead qualification Anda</p>
             </header>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard icon="👥" value={String(stats.total)} label="Total Leads" change="+12%" />
               <StatCard icon="✅" value={String(stats.qualified)} label="Qualified" change="+8%" />
               <StatCard icon="📈" value={`${stats.conversionRate}%`} label="Conversion Rate" change="+5%" />
               <StatCard icon="🎯" value={String(stats.avgScore)} label="Avg Score" change="+3%" />
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              <div className="lg:col-span-2">
-                <ScoreChart leads={leads} />
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="font-bold text-gray-800 mb-4">Recent Leads</h3>
-                <div className="space-y-4">
-                  {leads.slice(0, 5).map((l) => (
-                    <div key={l.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">{l.name}</p>
-                        <p className="text-xs text-gray-500">{l.propertyInterest}</p>
-                      </div>
-                      <StatusBadge status={l.status} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="font-bold text-gray-800">All Leads</h3>
@@ -452,14 +377,8 @@ export default function App() {
                       <tr key={l.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-6 py-4 font-medium text-gray-900">{l.name}</td>
                         <td className="px-6 py-4 text-gray-600">{l.propertyInterest}</td>
-                        <td className="px-6 py-4">
-                          <div className="w-32 md:w-40">
-                            <ScoreBar score={l.totalScore} max={l.maxPossible || 500} />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={l.status} />
-                        </td>
+                        <td className="px-6 py-4"><div className="w-32 md:w-40"><ScoreBar score={l.totalScore} max={l.maxPossible || 500} /></div></td>
+                        <td className="px-6 py-4"><StatusBadge status={l.status} /></td>
                         <td className="px-6 py-4 text-gray-500">{formatDate(l.createdAt)}</td>
                       </tr>
                     ))}
@@ -476,13 +395,10 @@ export default function App() {
             <header className="mb-8 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Questionnaire Builder</h2>
-                <p className="text-gray-500">Atur pertanyaan dan bobot skor untuk kualifikasi lead</p>
+                <p className="text-gray-500">Atur pertanyaan dan bobot skor</p>
               </div>
-              <button onClick={() => openQModal()} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                + Add Question
-              </button>
+              <button onClick={() => openQModal()} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm">+ Add Question</button>
             </header>
-
             <div className="space-y-4">
               {questions.map((q, idx) => (
                 <div key={q.id} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -581,17 +497,16 @@ export default function App() {
           </div>
         )}
 
-        {/* LEADS LIST */}
+        {/* LEADS */}
         {activeTab === 'leads' && (
           <div>
             <header className="mb-8 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Lead Management</h2>
-                <p className="text-gray-500">Kelola, filter, dan export data lead Anda</p>
+                <p className="text-gray-500">Kelola dan export data lead</p>
               </div>
               <button onClick={handleExport} className="bg-green-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm">📥 Export CSV</button>
             </header>
-
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -609,24 +524,13 @@ export default function App() {
                   <tbody>
                     {leads.map((l) => (
                       <tr key={l.id} className="border-t hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-gray-900">{l.name}</div>
-                          <div className="text-xs text-gray-500">{l.email}</div>
-                        </td>
+                        <td className="px-6 py-4"><div className="font-semibold text-gray-900">{l.name}</div><div className="text-xs text-gray-500">{l.email}</div></td>
                         <td className="px-6 py-4 text-gray-700">{l.phone}</td>
                         <td className="px-6 py-4 text-gray-700">{l.propertyInterest}</td>
-                        <td className="px-6 py-4">
-                          <div className="w-32 md:w-40">
-                            <ScoreBar score={l.totalScore} max={l.maxPossible || 500} />
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={l.status} />
-                        </td>
+                        <td className="px-6 py-4"><div className="w-32 md:w-40"><ScoreBar score={l.totalScore} max={l.maxPossible || 500} /></div></td>
+                        <td className="px-6 py-4"><StatusBadge status={l.status} /></td>
                         <td className="px-6 py-4 text-gray-500">{formatDate(l.createdAt)}</td>
-                        <td className="px-6 py-4">
-                          <a href={`https://wa.me/${l.phone}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline text-sm font-medium">WhatsApp</a>
-                        </td>
+                        <td className="px-6 py-4"><a href={`https://wa.me/${l.phone}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline text-sm font-medium">WhatsApp</a></td>
                       </tr>
                     ))}
                   </tbody>
@@ -636,199 +540,44 @@ export default function App() {
           </div>
         )}
 
-        {/* LANDING PREVIEW */}
+        {/* PREVIEW */}
         {activeTab === 'preview' && (
           <div className="max-w-2xl mx-auto">
             <header className="mb-8 text-center">
               <h2 className="text-2xl font-bold text-gray-900">Landing Page Preview</h2>
               <p className="text-gray-500">Ini yang akan dilihat calon lead Anda</p>
             </header>
-
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-8 text-center text-white">
                 <h1 className="text-3xl font-bold mb-2">Temukan Properti Impian Anda</h1>
-                <p className="opacity-90">Isi kuesioner singkat di bawah dan kami akan membantu Anda menemukan properti terbaik sesuai budget.</p>
+                <p className="opacity-90">Isi kuesioner singkat dan kami akan bantu cari properti terbaik.</p>
               </div>
-
               {!previewResult ? (
                 <form onSubmit={handlePreviewSubmit} className="p-8 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap *</label>
-                      <input
-                        required
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        value={previewMeta.name}
-                        onChange={(e) => setPreviewMeta((m) => ({ ...m, name: e.target.value }))}
-                      />
+                      <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" value={previewMeta.name} onChange={(e) => setPreviewMeta((m) => ({ ...m, name: e.target.value }))} />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp *</label>
-                      <input
-                        required
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="628xxxxxxxxxx"
-                        value={previewMeta.phone}
-                        onChange={(e) => setPreviewMeta((m) => ({ ...m, phone: e.target.value }))}
-                      />
+                      <input required className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="628xxxxxxxxxx" value={previewMeta.phone} onChange={(e) => setPreviewMeta((m) => ({ ...m, phone: e.target.value }))} />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        value={previewMeta.email}
-                        onChange={(e) => setPreviewMeta((m) => ({ ...m, email: e.target.value }))}
-                      />
+                      <input type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" value={previewMeta.email} onChange={(e) => setPreviewMeta((m) => ({ ...m, email: e.target.value }))} />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Properti yang Diminati</label>
-                      <input
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        value={previewMeta.property}
-                        onChange={(e) => setPreviewMeta((m) => ({ ...m, property: e.target.value }))}
-                      />
+                      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" value={previewMeta.property} onChange={(e) => setPreviewMeta((m) => ({ ...m, property: e.target.value }))} />
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     {questions.map((q, idx) => (
                       <div key={q.id}>
-                        <label className="block text-sm font-medium text-gray-800 mb-2">
-                          Q{idx + 1}. {q.text}
-                          {q.required && <span className="text-red-500 ml-1">*</span>}
-                        </label>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Q{idx + 1}. {q.text}{q.required && <span className="text-red-500 ml-1">*</span>}</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {q.options.map((opt) => (
-                            <label
-                              key={opt}
-                              className={cx(
-                                'flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer transition-all',
-                                previewAnswers[q.id] === opt ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300 bg-white'
-                              )}
-                            >
-                              <input
-                                type="radio"
-                                name={q.id}
-                                value={opt}
-                                checked={previewAnswers[q.id] === opt}
-                                onChange={() => setPreviewAnswers((a) => ({ ...a, [q.id]: opt }))}
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm text-gray-700">{opt}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg shadow hover:shadow-lg transition-all"
-                  >
-                    Submit & Check Eligibility
-                  </button>
-                </form>
-              ) : (
-                <div className="p-8 text-center">
-                  <div
-                    className={cx(
-                      'inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 text-3xl',
-                      previewResult.status === 'qualified' ? 'bg-green-100 text-green-600' : previewResult.status === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'
-                    )}
-                  >
-                    {previewResult.status === 'qualified' ? '🎉' : previewResult.status === 'pending' ? '⏳' : '👋'}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">Skor Anda: {previewResult.score}</h3>
-                  <p className="text-gray-500 mb-6">
-                    Status: <span className="font-bold capitalize">{previewResult.status}</span>
-                  </p>
-
-                  {previewResult.status === 'qualified' && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-green-800 text-sm">
-                      🎉 Selamat! Anda lolos kualifikasi. Kami mengarahkan Anda ke WhatsApp admin...
-                    </div>
-                  )}
-
-                  <button onClick={resetPreview} className="text-blue-600 font-medium hover:underline text-sm">← Isi ulang form</button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* SETTINGS / CRM */}
-        {activeTab === 'settings' && (
-          <div className="max-w-3xl">
-            <header className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Settings & Integrations</h2>
-              <p className="text-gray-500">Atur WhatsApp redirect dan koneksi CRM</p>
-            </header>
-
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="font-bold text-gray-800 mb-4">📱 WhatsApp Configuration</h3>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp Admin (kode negara)</label>
-                <input
-                  className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                  placeholder="6281234567890"
-                />
-                <p className="text-xs text-gray-500 mt-2">Lead qualified akan otomatis diarahkan ke WhatsApp ini.</p>
-              </div>
-
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-800">🔌 CRM Integration</h3>
-                  <label className="inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={crm.enabled}
-                      onChange={(e) => setCrm((c) => ({ ...c, enabled: e.target.checked }))}
-                    />
-                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    <span className="ml-3 text-sm font-medium text-gray-700">{crm.enabled ? 'On' : 'Off'}</span>
-                  </label>
-                </div>
-
-                {crm.enabled && (
-                  <div className="space-y-4 mt-4 border-t border-gray-100 pt-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CRM Type</label>
-                      <select
-                        className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        value={crm.type}
-                        onChange={(e) => setCrm((c) => ({ ...c, type: e.target.value as CRMSettings['type'] }))}
-                      >
-                        <option value="hubspot">HubSpot</option>
-                        <option value="zoho">Zoho CRM</option>
-                        <option value="salesforce">Salesforce</option>
-                        <option value="custom">Custom Webhook</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">API Key / Webhook URL</label>
-                      <input
-                        type="text"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                        value={crm.apiKey}
-                        onChange={(e) => setCrm((c) => ({ ...c, apiKey: e.target.value }))}
-                        placeholder={crm.type === 'custom' ? 'https://your-api.com/webhook' : 'API Key'}
-                      />
-                    </div>
-                    <button onClick={() => alert('CRM settings saved!')} className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800">
-                      Save Integration
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  )
-}
+                            <label key={opt} className={cx('flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer transition-all', previewAnswers[q.id] === opt ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300 bg-white')}>
+                              <input type="radio" name={q.id} value={opt} checked={previewAnswers[q.id] === opt} onChange={() => setPreviewAnswers((a) => ({ ...a, [q.id]: opt }))} className="text-blue-600" />
+                              <span className="text-sm text
